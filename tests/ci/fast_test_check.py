@@ -27,6 +27,7 @@ def get_fasttest_cmd(
     commit_sha: str,
     image: DockerImage,
 ) -> str:
+    chcache_password = get_parameter_from_ssm("chcache_password")
     return (
         f"docker run --cap-add=SYS_PTRACE --user={os.geteuid()}:{os.getegid()} "
         "--security-opt seccomp=unconfined "  # required to issue io_uring sys-calls
@@ -36,7 +37,7 @@ def get_fasttest_cmd(
         f"-e FASTTEST_CMAKE_FLAGS='-DCOMPILER_CACHE=chcache' "
         f"-e PULL_REQUEST_NUMBER={pr_number} -e COMMIT_SHA={commit_sha} "
         f"-e COPY_CLICKHOUSE_BINARY_TO_OUTPUT=1 "
-        f"-e CH_HOSTNAME='https://lr5v5i0nr3.eu-west-1.aws.clickhouse-staging.com' -e CH_USER=ci_builder -e CH_PASSWORD='{get_parameter_from_ssm("chcache_password")}' "
+        f"-e CH_HOSTNAME='https://lr5v5i0nr3.eu-west-1.aws.clickhouse-staging.com' -e CH_USER=ci_builder -e CH_PASSWORD='{chcache_password}' "
         "-e stage=clone_submodules "
         f"--volume={workspace}:/fasttest-workspace --volume={repo_path}:/repo "
         f"--volume={output_path}:/test_output {image} /repo/tests/docker_scripts/fasttest_runner.sh"
