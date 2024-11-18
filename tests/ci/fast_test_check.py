@@ -13,7 +13,7 @@ from pr_info import PRInfo
 from report import ERROR, FAILURE, SUCCESS, JobReport, TestResults, read_test_results
 from stopwatch import Stopwatch
 from tee_popen import TeePopen
-from tests.ci.get_robot_token import get_parameter_from_ssm
+from get_robot_token import get_parameter_from_ssm
 
 # Will help to avoid errors like _csv.Error: field larger than field limit (131072)
 csv.field_size_limit(sys.maxsize)
