@@ -8,11 +8,12 @@ from pathlib import Path
 from typing import Tuple
 
 from docker_images_helper import DockerImage, get_docker_image, pull_image
-from env_helper import CHCACHE_PASSWORD, REPO_COPY, TEMP_PATH
+from env_helper import REPO_COPY, TEMP_PATH
 from pr_info import PRInfo
 from report import ERROR, FAILURE, SUCCESS, JobReport, TestResults, read_test_results
 from stopwatch import Stopwatch
 from tee_popen import TeePopen
+from tests.ci.get_robot_token import get_parameter_from_ssm
 
 # Will help to avoid errors like _csv.Error: field larger than field limit (131072)
 csv.field_size_limit(sys.maxsize)
@@ -35,7 +36,7 @@ def get_fasttest_cmd(
         f"-e FASTTEST_CMAKE_FLAGS='-DCOMPILER_CACHE=chcache' "
         f"-e PULL_REQUEST_NUMBER={pr_number} -e COMMIT_SHA={commit_sha} "
         f"-e COPY_CLICKHOUSE_BINARY_TO_OUTPUT=1 "
-        f"-e CH_HOSTNAME='https://lr5v5i0nr3.eu-west-1.aws.clickhouse-staging.com' -e CH_USER=ci_builder -e CH_PASSWORD='{CHCACHE_PASSWORD}' "
+        f"-e CH_HOSTNAME='https://lr5v5i0nr3.eu-west-1.aws.clickhouse-staging.com' -e CH_USER=ci_builder -e CH_PASSWORD='{get_parameter_from_ssm("chcache_password")}' "
         "-e stage=clone_submodules "
         f"--volume={workspace}:/fasttest-workspace --volume={repo_path}:/repo "
         f"--volume={output_path}:/test_output {image} /repo/tests/docker_scripts/fasttest_runner.sh"
@@ -97,7 +98,8 @@ def main():
         pr_info.sha,
         docker_image,
     )
-    logging.info("Going to run fasttest with cmd %s", run_cmd)
+    sanitized_run_cmd = run_cmd.replace(get_parameter_from_ssm("chcache_password"), "****")
+    logging.info("Going to run fasttest with cmd %s", sanitized_run_cmd)
 
     logs_path = temp_path / "fasttest-logs"
     logs_path.mkdir(parents=True, exist_ok=True)
