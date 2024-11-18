@@ -10,7 +10,7 @@ from typing import Tuple
 
 import docker_images_helper
 from ci_config import CI
-from env_helper import REPO_COPY, S3_BUILDS_BUCKET, TEMP_PATH, CHCACHE_PASSWORD
+from env_helper import REPO_COPY, S3_BUILDS_BUCKET, TEMP_PATH
 from git_helper import Git
 from pr_info import PRInfo
 from report import FAILURE, SUCCESS, JobReport, StatusType
@@ -60,9 +60,6 @@ def get_packager_cmd(
         cmd += " --coverage"
     if build_config.tidy:
         cmd += " --clang-tidy"
-
-    cmd += " --cache=chcache"
-    cmd += f" --chcache-password={CHCACHE_PASSWORD}"
 
     cmd += " --s3-rw-access"
     cmd += f" --s3-bucket={S3_BUILDS_BUCKET}"
