@@ -39,9 +39,12 @@ CMAKE_CMD = """cmake --debug-trycompile -DCMAKE_VERBOSE_MAKEFILE=1 -LA \
 -DCMAKE_C_COMPILER=clang-18 -DCMAKE_CXX_COMPILER=clang++-18 \
 -DCOMPILER_CACHE={CACHE_TYPE} -DENABLE_BUILD_PROFILING=1 {DIR}"""
 
+# release:          cmake --debug-trycompile -DCMAKE_VERBOSE_MAKEFILE=1 -LA -DCMAKE_BUILD_TYPE=None -DSANITIZE= -DENABLE_CHECK_HEAVY_BUILDS=1 -DENABLE_CLICKHOUSE_SELF_EXTRACTING=1 -DENABLE_TESTS=0 -DENABLE_UTILS=0 -DCMAKE_FIND_PACKAGE_NO_PACKAGE_REGISTRY=ON -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_SYSCONFDIR=/etc -DCMAKE_INSTALL_LOCALSTATEDIR=/var -DCMAKE_SKIP_INSTALL_ALL_DEPENDENCY=ON -DSPLIT_DEBUG_SYMBOLS=ON -DBUILD_STANDALONE_KEEPER=1 -DCMAKE_C_COMPILER=clang-18 -DCMAKE_CXX_COMPILER=clang++-18 -DCOMPILER_CACHE=sccache -DENABLE_BUILD_PROFILING=1 ..
+# binary release:   cmake --debug-trycompile -DCMAKE_VERBOSE_MAKEFILE=1 -LA -DCMAKE_BUILD_TYPE=None -DSANITIZE= -DENABLE_CHECK_HEAVY_BUILDS=1 -DENABLE_CLICKHOUSE_SELF_EXTRACTING=1 -DCMAKE_C_COMPILER=clang-18 -DCMAKE_CXX_COMPILER=clang++-18 -DCOMPILER_CACHE=sccache -DENABLE_BUILD_PROFILING=1 ..
+# release coverage: cmake --debug-trycompile -DCMAKE_VERBOSE_MAKEFILE=1 -LA -DCMAKE_BUILD_TYPE=None -DSANITIZE= -DENABLE_CHECK_HEAVY_BUILDS=1 -DENABLE_CLICKHOUSE_SELF_EXTRACTING=1 -DENABLE_TESTS=0 -DENABLE_UTILS=0 -DCMAKE_FIND_PACKAGE_NO_PACKAGE_REGISTRY=ON -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_SYSCONFDIR=/etc -DCMAKE_INSTALL_LOCALSTATEDIR=/var -DCMAKE_SKIP_INSTALL_ALL_DEPENDENCY=ON -DCMAKE_C_COMPILER=clang-18 -DCMAKE_CXX_COMPILER=clang++-18 -DSANITIZE_COVERAGE=1 -DBUILD_STANDALONE_KEEPER=0 -DCOMPILER_CACHE=sccache -DENABLE_BUILD_PROFILING=1 ..
+
 
 def main():
-
     args = parse_args()
 
     stop_watch = Utils.Stopwatch()
@@ -65,12 +68,13 @@ def main():
 
     BUILD_TYPE = "RelWithDebInfo"
     SANITIZER = ""
-    AUX_DEFS = " -DENABLE_TESTS=0 "
+    AUX_DEFS = " -DENABLE_TESTS=1 "
+    cmake_cmd = None
 
     if "debug" in build_type:
         print("Build type set: debug")
         BUILD_TYPE = "Debug"
-        AUX_DEFS = " -DENABLE_TESTS=1 "
+        AUX_DEFS = " -DENABLE_TESTS=0 "
     elif "release" in build_type:
         print("Build type set: release")
         AUX_DEFS = (
@@ -79,16 +83,28 @@ def main():
     elif "asan" in build_type:
         print("Sanitizer set: address")
         SANITIZER = "address"
+    elif "tsan" in build_type:
+        print("Sanitizer set: thread")
+        SANITIZER = "thread"
+    elif "msan" in build_type:
+        print("Sanitizer set: memory")
+        SANITIZER = "memory"
+    elif "ubsan" in build_type:
+        print("Sanitizer set: undefined")
+        SANITIZER = "undefined"
+    elif "binary" in build_type:
+        cmake_cmd = f"cmake --debug-trycompile -DCMAKE_VERBOSE_MAKEFILE=1 -LA -DCMAKE_BUILD_TYPE=None -DSANITIZE= -DENABLE_CHECK_HEAVY_BUILDS=1 -DENABLE_CLICKHOUSE_SELF_EXTRACTING=1 -DCMAKE_C_COMPILER=clang-18 -DCMAKE_CXX_COMPILER=clang++-18 -DCOMPILER_CACHE=sccache -DENABLE_BUILD_PROFILING=1 {Utils.cwd()}"
     else:
         assert False
 
-    cmake_cmd = CMAKE_CMD.format(
-        BUILD_TYPE=BUILD_TYPE,
-        CACHE_TYPE=CACHE_TYPE,
-        SANITIZER=SANITIZER,
-        AUX_DEFS=AUX_DEFS,
-        DIR=Utils.cwd(),
-    )
+    if not cmake_cmd:
+        cmake_cmd = CMAKE_CMD.format(
+            BUILD_TYPE=BUILD_TYPE,
+            CACHE_TYPE=CACHE_TYPE,
+            SANITIZER=SANITIZER,
+            AUX_DEFS=AUX_DEFS,
+            DIR=Utils.cwd(),
+        )
 
     build_dir = f"{Settings.TEMP_DIR}/build"
 
@@ -149,9 +165,12 @@ def main():
         )
         Shell.check("sccache --show-stats")
         Shell.check(f"ls -l {build_dir}/programs/")
+        Shell.check(f"pwd")
+        Shell.check(f"find {build_dir} -name unit_tests_dbms")
+        Shell.check(f"find . -name unit_tests_dbms")
         res = results[-1].is_ok()
 
-    if res and JobStages.PACKAGE in stages:
+    if res and JobStages.PACKAGE in stages and "binary" not in build_type:
         if "debug" in build_type:
             package_type = "debug"
         elif "release" in build_type:

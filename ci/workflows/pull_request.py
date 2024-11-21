@@ -13,16 +13,35 @@ from ci.settings.definitions import (
 class ArtifactNames:
     CH_AMD_DEBUG = "CH_AMD_DEBUG"
     CH_AMD_RELEASE = "CH_AMD_RELEASE"
+    CH_AMD_ASAN = "CH_AMD_ASAN"
+    CH_AMD_TSAN = "CH_AMD_TSAN"
+    CH_AMD_MSAN = "CH_AMD_MSAN"
+    CH_AMD_UBSAN = "CH_AMD_UBSAN"
+    CH_AMD_BINARY = "CH_AMD_BINARY"
     CH_ARM_RELEASE = "CH_ARM_RELEASE"
     CH_ARM_ASAN = "CH_ARM_ASAN"
 
     CH_ODBC_B_AMD_DEBUG = "CH_ODBC_B_AMD_DEBUG"
     CH_ODBC_B_AMD_RELEASE = "CH_ODBC_B_AMD_RELEASE"
+    CH_ODBC_B_AMD_ASAN = "CH_ODBC_B_AMD_ASAN"
+    CH_ODBC_B_AMD_TSAN = "CH_ODBC_B_AMD_TSAN"
+    CH_ODBC_B_AMD_MSAN = "CH_ODBC_B_AMD_MSAN"
+    CH_ODBC_B_AMD_UBSAN = "CH_ODBC_B_AMD_UBSAN"
     CH_ODBC_B_ARM_RELEASE = "CH_ODBC_B_ARM_RELEASE"
     CH_ODBC_B_ARM_ASAN = "CH_ODBC_B_ARM_ASAN"
 
+    UNITTEST_AMD_ASAN = "UNITTEST_AMD_ASAN"
+    UNITTEST_AMD_TSAN = "UNITTEST_AMD_TSAN"
+    UNITTEST_AMD_MSAN = "UNITTEST_AMD_MSAN"
+    UNITTEST_AMD_UBSAN = "UNITTEST_AMD_UBSAN"
+    UNITTEST_AMD_BINARY = "UNITTEST_AMD_BINARY"
+
     DEB_AMD_DEBUG = "DEB_AMD_DEBUG"
     DEB_AMD_RELEASE = "DEB_AMD_RELEASE"
+    DEB_AMD_ASAN = "DEB_AMD_ASAN"
+    DEB_AMD_TSAN = "DEB_AMD_TSAN"
+    DEB_AMD_MSAM = "DEB_AMD_MSAM"
+    DEB_AMD_UBSAN = "DEB_AMD_UBSAN"
     DEB_ARM_RELEASE = "DEB_ARM_RELEASE"
     DEB_ARM_ASAN = "DEB_ARM_ASAN"
 
@@ -71,7 +90,17 @@ build_jobs = Job.Config(
         ],
     ),
 ).parametrize(
-    parameter=["amd_debug", "amd_release", "arm_release", "arm_asan"],
+    parameter=[
+        "amd_debug",
+        "amd_release",
+        "amd_asan",
+        "amd_tsan",
+        "amd_msan",
+        "amd_ubsan",
+        "amd_binary",
+        "arm_release",
+        "arm_asan",
+    ],
     provides=[
         [
             ArtifactNames.CH_AMD_DEBUG,
@@ -82,6 +111,29 @@ build_jobs = Job.Config(
             ArtifactNames.CH_AMD_RELEASE,
             ArtifactNames.DEB_AMD_RELEASE,
             ArtifactNames.CH_ODBC_B_AMD_RELEASE,
+        ],
+        [
+            ArtifactNames.CH_AMD_ASAN,
+            ArtifactNames.DEB_AMD_ASAN,
+            ArtifactNames.CH_ODBC_B_AMD_ASAN,
+        ],
+        [
+            ArtifactNames.CH_AMD_TSAN,
+            ArtifactNames.DEB_AMD_TSAN,
+            ArtifactNames.CH_ODBC_B_AMD_TSAN,
+        ],
+        [
+            ArtifactNames.CH_AMD_MSAN,
+            ArtifactNames.DEB_AMD_MSAM,
+            ArtifactNames.CH_ODBC_B_AMD_MSAN,
+        ],
+        [
+            ArtifactNames.CH_AMD_UBSAN,
+            ArtifactNames.DEB_AMD_UBSAN,
+            ArtifactNames.CH_ODBC_B_AMD_UBSAN,
+        ],
+        [
+            ArtifactNames.CH_AMD_BINARY,
         ],
         [
             ArtifactNames.CH_ARM_RELEASE,
@@ -95,6 +147,11 @@ build_jobs = Job.Config(
         ],
     ],
     runs_on=[
+        [RunnerLabels.BUILDER_AMD],
+        [RunnerLabels.BUILDER_AMD],
+        [RunnerLabels.BUILDER_AMD],
+        [RunnerLabels.BUILDER_AMD],
+        [RunnerLabels.BUILDER_AMD],
         [RunnerLabels.BUILDER_AMD],
         [RunnerLabels.BUILDER_AMD],
         [RunnerLabels.BUILDER_ARM],
@@ -208,6 +265,11 @@ workflow = Workflow.Config(
             names=[
                 ArtifactNames.CH_AMD_DEBUG,
                 ArtifactNames.CH_AMD_RELEASE,
+                ArtifactNames.CH_AMD_ASAN,
+                ArtifactNames.CH_AMD_TSAN,
+                ArtifactNames.CH_AMD_MSAN,
+                ArtifactNames.CH_AMD_UBSAN,
+                ArtifactNames.CH_AMD_BINARY,
                 ArtifactNames.CH_ARM_RELEASE,
                 ArtifactNames.CH_ARM_ASAN,
             ]
@@ -219,15 +281,27 @@ workflow = Workflow.Config(
         ).parametrize(
             names=[
                 ArtifactNames.CH_ODBC_B_AMD_DEBUG,
+                ArtifactNames.CH_ODBC_B_AMD_ASAN,
+                ArtifactNames.CH_ODBC_B_AMD_TSAN,
+                ArtifactNames.CH_ODBC_B_AMD_MSAN,
+                ArtifactNames.CH_ODBC_B_AMD_UBSAN,
                 ArtifactNames.CH_ODBC_B_AMD_RELEASE,
                 ArtifactNames.CH_ODBC_B_ARM_RELEASE,
                 ArtifactNames.CH_ODBC_B_ARM_ASAN,
             ]
         ),
-        Artifact.Config(
-            name=ArtifactNames.DEB_AMD_DEBUG,
+        *Artifact.Config(
+            name="*",
             type=Artifact.Type.S3,
             path=f"{Settings.TEMP_DIR}/output/*.deb",
+        ).parametrize(
+            names=[
+                ArtifactNames.DEB_AMD_DEBUG,
+                ArtifactNames.DEB_AMD_ASAN,
+                ArtifactNames.DEB_AMD_TSAN,
+                ArtifactNames.DEB_AMD_MSAM,
+                ArtifactNames.DEB_AMD_UBSAN,
+            ]
         ),
         Artifact.Config(
             name=ArtifactNames.DEB_AMD_RELEASE,
